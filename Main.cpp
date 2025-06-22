@@ -8,11 +8,105 @@
 #include <queue>
 #include <numeric>
 #include <map>
+
 #define l long
 #define ll long long
 #define LLMAX 9223372036854775807LL
 // #define DEBUG 
 // #define STRIDE_TEST
+#define BITSET_TEST
+// #define MAIN
+
+class bitset {
+// rip <bitset>, didn't know size at compile time & don't want to use boost
+private:
+    unsigned char* bits;
+    ll dims;
+    ll size;
+    ll n;
+    bool outOfBounds(ll pos) {return pos > (dims * 2);}
+public:
+    bitset(ll n) {
+        if (n%2 == 1) throw std::invalid_argument("bitset must be a multiple of 2.");
+        this->size = n + (n%8);
+        this->dims = n / 2;
+        this->n = n;
+        std::cout << this->size <<";"<<this->n<<std::endl;
+        bits = new unsigned char[this->size];
+        for(int i = 0; i<size;++i)bits[i]=0;
+    }
+
+    ~bitset() { delete[] bits; }
+    
+    /*     
+        0000-0000_0000-0000 
+        s(1)
+        1/8 = 0, 1%8 = 1 (1 << 1 = 1_0) => 0000-0010_0000-0000
+
+        s(5)
+        5/8 = 0, 5%8 = 1 (1 << 5 = 1_0000) => 0001-0000_0000-0000
+
+    */
+    void s(ll pos) {
+        // sets position bit to 1
+        if (!outOfBounds(pos)) {
+            // pos=this->size-pos;
+            ll idx = size/8-pos / 8;
+            ll diff = 8 - pos % 8;
+            std::cout<<pos<<";"<<idx<<";"<<diff<<";"<<(1 << diff)<<std::endl;
+            bits[idx] |= (1 << diff);
+            std::cout<<bits[2]<<std::endl;
+        }
+    }
+
+    bool isS(ll pos) {
+        // checks if position bit is set
+        if (!outOfBounds(pos)) {
+            // pos=this->size-pos;
+
+            ll idx = this->size-pos / 8;
+            ll diff = 8 - pos % 8;
+            return !(bits[idx] ^ (1 << diff));
+        }
+        return false;
+    }
+
+    void u(ll pos) {
+        // sets position bit to 0
+        if (isS(pos)) {
+            ll idx = pos / 8;
+            ll diff = 8 - pos % 8;
+            bits[idx] ^= (1 << diff);
+        }
+    }
+
+    int read(ll pos) {
+        // pos must be a multiple of 2 -- analyzes 2 bits
+        if (!outOfBounds(pos)) {
+            ll idx = pos / 8;
+            ll diff = 8 - pos % 8;
+            switch (bits[idx] & (1 << diff) + bits[idx] & (1 << (diff - 1))) {
+                case 1:
+                    return 1;
+                case 2:
+                    return -1;
+                default:
+                    return 0;
+            }
+        }
+        return -69;
+    }
+
+    void print() {
+        std::cout << "printing bitset. has " << dims << " dimensions." << std::endl;
+        for (int i = 0; i < dims; ++i) {
+            ll idx = i * 2 / 8;
+            ll pos = ((i+7) * 2) % 8;
+            std::cout << (bits[idx] & (1 << pos));
+        }
+        std::cout << std::endl;
+    }
+};
 
 struct CoorSystem {
     std::vector<ll> dims;
@@ -54,6 +148,16 @@ ll CoorSystem::get(std::vector<ll> coordinates) {
     if (idx > board.size()) throw std::invalid_argument("Index out of range.");
     return board[idx];
 }
+
+std::string solver_helper(std::string s, ll i) {
+    s[i] = '1';
+    return s;
+}
+std::pair<std::vector<std::string>, std::vector<std::string>> permute(std::string s) {
+    for (int i = 0; i < s.length(); ++i) {
+        solver_helper(s, i);
+    }
+}   
 
 /* helpers */
 // @todo format better in the future
@@ -189,17 +293,16 @@ CoorSystem init_board(CoorSystem System, std::vector<ll> dims, std::tuple<bool, 
 /* solver */
 ll CoorSystem::solver() {
     /* by default the goal is to get from 0,0,...,0 to n,n,...,n where n = dim.size()*/
-    std::vector<ll> board = board;
     ll colors = colors;
 
     // assume 2d setup
     ll rows = dims[0];
     ll cols = dims[1];
-    std::vector<std::string> allDirections;
-    std::string dirs('0', dims.size());
-    std::cout << dirs << std::endl;
-    std::vector<std::string> searchDirections;
-
+    ll dimSize = dims.size();
+    char bits[(dims.size() * 2 + 7) / 8];
+    std::string dirs = std::string(dims.size(), '0'); // @IMPORTANT: size, char
+    auto [allDirections, searchDirections] = permute(dirs);
+    
     std::tuple<ll, ll> curr = std::tuple{0LL, 0LL};
     std::set<std::string> visited; // @todo - could also use a boolean array. might be more efficient
     std::priority_queue<std::tuple<ll, std::tuple<ll, ll>>> pq;
@@ -208,7 +311,7 @@ ll CoorSystem::solver() {
     while (!pq.empty()) {
         auto [price, pt] = pq.top();
         pq.pop();
-        std::map<std::string, ll> needToVisit();
+        std::map<std::string, ll> needToVisit;
         for (auto point : visited) {
 
         }
@@ -318,17 +421,49 @@ int main() {
 
     #endif
 
+    #ifdef BITSET_TEST
     CoorSystem System;
     System = init_board(
         System,
         std::vector<ll> {14, 14},
         std::tuple<bool, ll, std::vector<ll>> {true, 6, std::vector<ll>{}}
     );
+    System.print_board(14);
+    // bitset bits(4);
+    // bits.print();
+    // bits.s(0);
+    // bits.print();
+    // std::cout << bits.isS(0) << std::endl;
+    // bits.u(0);
+    // bits.print();
+    // std::cout << bits.isS(0) << std::endl;
+    // bits.s(3);
+    // std::cout << bits.read(2) << std::endl;
+    // bits.print();
+    // std::cout << bits.isS(3) << std::endl;
 
+    bitset bits(24);
+    for (int i = 0; i <= 24; i++) {
+        bits.s(i);
+        std::cout<<bits.isS(i)<<std::endl;
+        bits.u(i);
+        std::cout<<bits.isS(i)<<std::endl;
+        std::cout<<std::endl;
+    }
+
+    #endif
+
+    #ifdef MAIN
+    CoorSystem System;
+    System = init_board(
+        System,
+        std::vector<ll> {14, 14},
+        std::tuple<bool, ll, std::vector<ll>> {true, 6, std::vector<ll>{}}
+    );
     System.print_board(14);
 
     auto ans = System.solver();
     std::cout << ans << std::endl;
-
+    #endif
     return 0;
 };
