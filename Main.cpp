@@ -6,31 +6,59 @@
 #include <algorithm>
 #include <set>
 #include <queue>
-
+#include <numeric>
+#include <map>
 #define l long
 #define ll long long
 #define LLMAX 9223372036854775807LL
-#define DEBUG 
-#define TEST
+// #define DEBUG 
+// #define STRIDE_TEST
 
 struct CoorSystem {
     std::vector<ll> dims;
     std::vector<ll> board;
     ll colors;
     ll get(std::vector<ll>);
+    void print_board();
+    void print_board(ll);
+    ll solver();
 };
 
 ll CoorSystem::get(std::vector<ll> coordinates) {
     /* stride access pattern */
-    if (coordinates.empty() || coordinates.size() > dims.size()) return board[0];
-    
+    if (coordinates.empty() || coordinates.size() != dims.size()) throw std::invalid_argument("Coordinates size must match with dimension size.");
+    ll stride = 1;
+    ll idx = 0;
+    /* outermost is the first index */
+
+    /* 
+        [0 1 2]  [0][2], [2][1]
+        [3 4 5]
+        [6 7 8]
+
+        0 1 2 3 4 5 6 7 8
+
+    */
+
+    for (int i = coordinates.size() - 1; i >= 0; i--) {
+        if (coordinates[i] >= dims[i]) 
+        throw std::invalid_argument(
+            "Index " + std::to_string(i) 
+            + " was out of range. Requested coordinate was: "
+            + std::to_string(coordinates[i])
+            + "; while dimension was: "
+            + std::to_string(dims[i]));
+        idx += stride * coordinates[i]; // smallest delta first, delta grows as we get closer to the first index. why? because the first index chooses from the biggest "chunk" (cuts the most space out)
+        stride *= dims[i];
+    }
+    if (idx > board.size()) throw std::invalid_argument("Index out of range.");
+    return board[idx];
 }
 
 /* helpers */
 // @todo format better in the future
-void print_board(std::vector<ll> board) {
+void print_board(std::vector<ll> board, ll bufferSize) {
     // @todo - save to txt file for use in javascript / Three.js visualizations / useful for web (integrate this C++ code onto a web app)
-    ll bufferSize = 15;
     for (int i = 0; i < board.size(); ++i) {
         std::cout << board[i];
         if (i == board.size() - 1) std::cout << std::endl;
@@ -39,8 +67,16 @@ void print_board(std::vector<ll> board) {
     }
 }
 
-void print_board(CoorSystem System) {
-    print_board(System.board);
+void print_board(std::vector<ll> board) {
+    print_board(board, 10);
+}
+
+void CoorSystem::print_board(ll bufferSize) {
+    ::print_board(board, bufferSize);
+}
+
+void CoorSystem::print_board() {
+    ::print_board(board, 10);
 }
 
 void debug_prints(CoorSystem System) {
@@ -51,7 +87,6 @@ void debug_prints(CoorSystem System) {
     if (System.board.size() >= 1) std::cout << "byte size of first board el: " << sizeof(System.board[0]) << std::endl;
     if (System.board.size() >= 1) std::cout << "byte size of first dims el: " << sizeof(System.dims[0]) << std::endl;
     std::cout << "num elements in board: " << System.board.size() << std::endl;
-    print_board(System);
     #endif
 }
 
@@ -67,6 +102,7 @@ std::vector<ll> gen_rand_board(ll colors, ll size) {
     }
 
     #ifdef DEBUG
+    std::cout << "printing board from gen_rand_board bc. debug mode enabled." << std::endl;
     print_board(ret);
     #endif
 
@@ -132,7 +168,7 @@ CoorSystem init_board(CoorSystem System, std::vector<ll> dims, std::tuple<bool, 
     auto [isRandomInit, colors, initState] = ifRandElseState;
     System.colors = colors;
     if (isRandomInit) {
-        #ifdef TEST
+        #ifdef STRIDE_TEST
         System.board = gen_increasing_board(colors, size);
         return System;
         #endif
@@ -151,23 +187,41 @@ CoorSystem init_board(CoorSystem System, std::vector<ll> dims, std::tuple<bool, 
 }
 
 /* solver */
-ll solver(CoorSystem System) {
+ll CoorSystem::solver() {
     /* by default the goal is to get from 0,0,...,0 to n,n,...,n where n = dim.size()*/
-    std::vector<ll> board = System.board;
-    ll colors = System.colors;
+    std::vector<ll> board = board;
+    ll colors = colors;
 
     // assume 2d setup
-    ll rows = System.dims[0];
-    ll cols = System.dims[1];
+    ll rows = dims[0];
+    ll cols = dims[1];
+    std::vector<std::string> allDirections;
+    std::string dirs('0', dims.size());
+    std::cout << dirs << std::endl;
+    std::vector<std::string> searchDirections;
+
     std::tuple<ll, ll> curr = std::tuple{0LL, 0LL};
-    std::set<std::tuple<ll, ll>> visited;
-    std::priority_queue<std::tuple<ll, ll, ll>> pq;
-    pq.push(std::make_tuple(LLMAX, 0, 0));
-    std::vector<std::tuple<int, int>> directions = {std::tuple{1, 1}, std::tuple{0, 1}, std::tuple{1, 0}}; 
+    std::set<std::string> visited; // @todo - could also use a boolean array. might be more efficient
+    std::priority_queue<std::tuple<ll, std::tuple<ll, ll>>> pq;
+    pq.push(std::make_tuple(LLMAX, curr));
 
     while (!pq.empty()) {
-        auto [price, x, y] = pq.top();
+        auto [price, pt] = pq.top();
         pq.pop();
+        std::map<std::string, ll> needToVisit();
+        for (auto point : visited) {
+
+        }
+        
+        /*
+            simple pq strategy:
+            1. pop top point
+            2. convert all similarly numbered neighboring points to the current point.
+            2. dfs from that space to unvisited nodes
+                a. create a list of possible candidates
+                b. rank candidates by count
+        */
+
 
     }
 
@@ -200,32 +254,80 @@ ll solver(CoorSystem System) {
 }
 
 int main() {
+    #ifdef DEBUG
     CoorSystem System;
     CoorSystem SystemInit;
-    #ifdef DEBUG
+
     std::cout << "inside debug mode." << std::endl; 
-    #endif
-
     System = init_board(
-        System,                                                             //! default coordinate system
-        std::vector {3LL, 3LL, 3LL, 3LL},                                           //! default, hard 14 x 14 array 
-        std::tuple<bool, ll, std::vector<ll>> {true, 6, std::vector<ll>(0)} //! default, random init with 6 colors
+        System,                                                            
+        std::vector {3LL, 3LL, 3LL, 3LL, 3LL},                             
+        std::tuple<bool, ll, std::vector<ll>> {true, 10, std::vector<ll>(0)}
     );
-
+    ll x = 17, y = 3;
+    std::vector<ll> vec(x * y);
+    std::iota(vec.begin(), vec.end(), 1);
     SystemInit = init_board(
-        SystemInit,
-        std::vector {2LL, 2LL},
-        std::tuple<bool, ll, std::vector<ll>> {false, 4, std::vector {0LL, 1LL, 2LL, 3LL}}
+        SystemInit, 
+        std::vector {17LL, 3LL},
+        std::tuple<bool, ll, std::vector<ll>> 
+            {   false, 
+                x * y, 
+                vec
+            }
     );
 
     debug_prints(System);
-    debug_prints(SystemInit);
+    System.print_board();
 
-    std::cout << "getting: " << System.get({0, 0, 0, 0}) << std::endl;
-    std::cout << "getting: " << System.get({0, 1, 0, 0}) << std::endl;
-    std::cout << "getting: " << System.get({0, 0, 1, 0}) << std::endl;
-    std::cout << "getting: " << System.get({0, 0, 0, 1}) << std::endl;
-    ll ans = solver(System);
+    debug_prints(SystemInit);
+    SystemInit.print_board(17);
+
+    #endif
+
+    #ifdef STRIDE_TEST
+    CoorSystem System;
+    CoorSystem SystemInit;
+
+    std::cout << "inside stride test mode." << std::endl; 
+    System = init_board(
+        System,                                                            
+        std::vector {3LL, 3LL, 3LL, 3LL, 3LL},                             
+        std::tuple<bool, ll, std::vector<ll>> {true, 6, std::vector<ll>(0)}
+    );
+
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            for (int k = 0; k < 3; ++k) {
+                for (int a = 0; a < 3; ++a) {
+                    for (int b = 0; b < 3; ++b) {
+                        std::cout << "inside loop: " << System.get({i, j, k, a, b}) << std::endl;
+                    }
+                }
+            }
+        }
+    }
+    System.print_board(3);
+    // lolz praying these 5-d coordinate system is correct. if you can visualize this, you might be cracked - email me at contact[at]hzx[dot]ai
+    std::cout << "custom test: " << System.get({0, 0, 0, 0, 0}) << std::endl;
+    std::cout << "custom test: " << System.get({0, 0, 1, 0, 0}) << std::endl;
+    std::cout << "custom test: " << System.get({0, 1, 1, 0, 0}) << std::endl;
+    std::cout << "custom test: " << System.get({2, 2, 1, 0, 0}) << std::endl; 
+    std::cout << "custom test: " << System.get({2, 2, 1, 0, 0}) << std::endl; 
+
+
+    #endif
+
+    CoorSystem System;
+    System = init_board(
+        System,
+        std::vector<ll> {14, 14},
+        std::tuple<bool, ll, std::vector<ll>> {true, 6, std::vector<ll>{}}
+    );
+
+    System.print_board(14);
+
+    auto ans = System.solver();
     std::cout << ans << std::endl;
 
     return 0;
