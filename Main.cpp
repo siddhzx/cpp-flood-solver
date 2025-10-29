@@ -8,6 +8,8 @@
 #include <queue>
 #include <numeric>
 #include <map>
+#include <math.h>
+#include <deque>
 
 #define l long
 #define ll long long
@@ -17,94 +19,91 @@
 #define BITSET_TEST
 // #define MAIN
 
-class bitset {
-// rip <bitset>, didn't know size at compile time & don't want to use boost
-private:
-    unsigned char* bits;
-    ll dims;
-    ll size;
-    ll n;
-    bool outOfBounds(ll pos) {return pos > (dims * 2);}
+using namespace std;
+
+#define ull unsigned long long
+#define ull_size (sizeof(ull)*8) 
+class rtbs {
+protected:
+    ull* bits;
+    ull size;
+    string ull_bin(ull n){
+        string ret;
+        if (n == 0) {return "0";}
+        for (int i = ull_size-1; i >= 0; i--) {
+            ret += (n & (1ull << i))?'1':'0';        
+            if (i%4==0&&i!=0) ret+='_';
+        }
+        return ret;
+    }
 public:
-    bitset(ll n) {
-        if (n%2 == 1) throw std::invalid_argument("bitset must be a multiple of 2.");
-        this->size = n + (n%8);
-        this->dims = n / 2;
-        this->n = n;
-        std::cout << this->size <<";"<<this->n<<std::endl;
-        bits = new unsigned char[this->size];
-        for(int i = 0; i<size;++i)bits[i]=0;
+    rtbs(ull n) {
+        size = n;
+        bits = new ull[size];
+        for(ull i = 0; i<size;++i)bits[i]= (0); 
     }
 
-    ~bitset() { delete[] bits; }
-    
-    /*     
-        0000-0000_0000-0000 
-        s(1)
-        1/8 = 0, 1%8 = 1 (1 << 1 = 1_0) => 0000-0010_0000-0000
+    ~rtbs() { delete[] bits; }
 
-        s(5)
-        5/8 = 0, 5%8 = 1 (1 << 5 = 1_0000) => 0001-0000_0000-0000
-
-    */
-    void s(ll pos) {
-        // sets position bit to 1
-        if (!outOfBounds(pos)) {
-            // pos=this->size-pos;
-            ll idx = size/8-pos / 8;
-            ll diff = 8 - pos % 8;
-            std::cout<<pos<<";"<<idx<<";"<<diff<<";"<<(1 << diff)<<std::endl;
-            bits[idx] |= (1 << diff);
-            std::cout<<bits[2]<<std::endl;
+    void p() {
+        cout<<string(ull_size, '=')<<endl;
+        for (ull i = 0; i < size; ++i){
+            ull n = bits[i];
+            cout<<"idx: "<<i<<"; ull val: "<<n<<"; \nbinary: "<<ull_bin(n)<<endl;
         }
+        cout<<string(ull_size, '=')<<endl;
     }
 
-    bool isS(ll pos) {
-        // checks if position bit is set
-        if (!outOfBounds(pos)) {
-            // pos=this->size-pos;
-
-            ll idx = this->size-pos / 8;
-            ll diff = 8 - pos % 8;
-            return !(bits[idx] ^ (1 << diff));
-        }
-        return false;
+    void s(ull pos) {
+        ull idx = pos/ull_size;
+        ull set = (ull_size-1-(pos%ull_size));
+        bits[idx] |= (1ull<<set);
     }
 
-    void u(ll pos) {
-        // sets position bit to 0
+    bool isS(ull pos) {
+        ull idx = pos/ull_size;
+        ull set = (ull_size-1-pos);
+        return bits[idx] & (1ull<<set);
+    }
+
+    void z(ull pos) {
         if (isS(pos)) {
-            ll idx = pos / 8;
-            ll diff = 8 - pos % 8;
-            bits[idx] ^= (1 << diff);
+            ull idx = pos/ull_size;
+            ull set = (ull_size-1-pos);
+            bits[idx] ^= (1ull<<set);
         }
     }
+};
 
-    int read(ll pos) {
-        // pos must be a multiple of 2 -- analyzes 2 bits
-        if (!outOfBounds(pos)) {
-            ll idx = pos / 8;
-            ll diff = 8 - pos % 8;
-            switch (bits[idx] & (1 << diff) + bits[idx] & (1 << (diff - 1))) {
-                case 1:
-                    return 1;
-                case 2:
-                    return -1;
-                default:
-                    return 0;
-            }
-        }
-        return -69;
+class bitset: public rtbs {
+public:
+    bitset():rtbs(0) {}
+    bitset(ull n):rtbs(n) {} 
+    int get(ull start, ull end) {
+        ull ret = 0; ull offset = 0;
+        for (auto i = start; i<end; ++i)
+            ret ^= (isS(i)<<offset++);
+        return ret; 
     }
 
-    void print() {
-        std::cout << "printing bitset. has " << dims << " dimensions." << std::endl;
-        for (int i = 0; i < dims; ++i) {
-            ll idx = i * 2 / 8;
-            ll pos = ((i+7) * 2) % 8;
-            std::cout << (bits[idx] & (1 << pos));
+    int get(ull n) {
+        if (n < 0 || n > (size*ull_size)) throw invalid_argument("getting an index out of bounds.");
+        ull next = (n%2==0) ? n + 1 : n - 1;
+        switch (isS(n) + isS(next)) {
+            case 0:
+                return 0;
+            case 1:
+                return 1;
+            case 2:
+                return -1;
+            default:
+                cout<<"cooked"<<endl;
+                return -69420;
         }
-        std::cout << std::endl;
+    }
+    using rtbs::s; 
+    void s(std::vector<ull> pts) {
+        for (auto i : pts) s(i);
     }
 };
 
@@ -112,27 +111,23 @@ struct CoorSystem {
     std::vector<ll> dims;
     std::vector<ll> board;
     ll colors;
+    ll size;
+    // ll -> ull might be problematic rip.
+    ll coordinate_getter(std::vector<ll>);
     ll get(std::vector<ll>);
     void print_board();
     void print_board(ll);
     ll solver();
+    bitset visited;
+    bool visit(std::vector<ll>);
+    bool is_visited(std::vector<ll>);
 };
 
-ll CoorSystem::get(std::vector<ll> coordinates) {
-    /* stride access pattern */
+/* helpers */
+ll CoorSystem::coordinate_getter(std::vector<ll> coordinates) {
     if (coordinates.empty() || coordinates.size() != dims.size()) throw std::invalid_argument("Coordinates size must match with dimension size.");
     ll stride = 1;
     ll idx = 0;
-    /* outermost is the first index */
-
-    /* 
-        [0 1 2]  [0][2], [2][1]
-        [3 4 5]
-        [6 7 8]
-
-        0 1 2 3 4 5 6 7 8
-
-    */
 
     for (int i = coordinates.size() - 1; i >= 0; i--) {
         if (coordinates[i] >= dims[i]) 
@@ -146,20 +141,23 @@ ll CoorSystem::get(std::vector<ll> coordinates) {
         stride *= dims[i];
     }
     if (idx > board.size()) throw std::invalid_argument("Index out of range.");
-    return board[idx];
+
+    return idx;
 }
 
-std::string solver_helper(std::string s, ll i) {
-    s[i] = '1';
-    return s;
+ll CoorSystem::get(std::vector<ll> coordinates) {
+    return board[coordinate_getter(coordinates)];
 }
-std::pair<std::vector<std::string>, std::vector<std::string>> permute(std::string s) {
-    for (int i = 0; i < s.length(); ++i) {
-        solver_helper(s, i);
-    }
-}   
 
-/* helpers */
+bool CoorSystem::is_visited(std::vector<ll> coordinates) {
+    return visited.isS(coordinate_getter(coordinates));
+}
+
+bool CoorSystem::visit(std::vector<ll> coordinates) {
+    ll idx = coordinate_getter(coordinates);
+    visited.s(idx);
+    return visited.isS(idx);
+}
 // @todo format better in the future
 void print_board(std::vector<ll> board, ll bufferSize) {
     // @todo - save to txt file for use in javascript / Three.js visualizations / useful for web (integrate this C++ code onto a web app)
@@ -268,6 +266,8 @@ CoorSystem init_board(CoorSystem System, std::vector<ll> dims, std::tuple<bool, 
     if (!initd) {
         throw std::invalid_argument("Must be non-zero dimension.");
     }    
+    System.size=size;
+    System.visited=bitset(size);
     // accessing undefined memory led to segfault bruh.
     auto [isRandomInit, colors, initState] = ifRandElseState;
     System.colors = colors;
@@ -299,22 +299,25 @@ ll CoorSystem::solver() {
     ll rows = dims[0];
     ll cols = dims[1];
     ll dimSize = dims.size();
-    char bits[(dims.size() * 2 + 7) / 8];
-    std::string dirs = std::string(dims.size(), '0'); // @IMPORTANT: size, char
-    auto [allDirections, searchDirections] = permute(dirs);
+    bitset directions(dimSize);
+    /*
+        1010
+        1100
+        0110
+
+        1000
+        0100
+    */
+    for (auto d : dims) 
     
-    std::tuple<ll, ll> curr = std::tuple{0LL, 0LL};
-    std::set<std::string> visited; // @todo - could also use a boolean array. might be more efficient
-    std::priority_queue<std::tuple<ll, std::tuple<ll, ll>>> pq;
-    pq.push(std::make_tuple(LLMAX, curr));
+    bitset curr(dimSize); // 0 by default
+
+    std::priority_queue<std::tuple<ll, bitset>> pq;
+    
+    // pq.push(std::make_tuple(LLMAX, curr));
 
     while (!pq.empty()) {
-        auto [price, pt] = pq.top();
-        pq.pop();
-        std::map<std::string, ll> needToVisit;
-        for (auto point : visited) {
-
-        }
+        
         
         /*
             simple pq strategy:
@@ -429,28 +432,27 @@ int main() {
         std::tuple<bool, ll, std::vector<ll>> {true, 6, std::vector<ll>{}}
     );
     System.print_board(14);
-    // bitset bits(4);
-    // bits.print();
-    // bits.s(0);
-    // bits.print();
-    // std::cout << bits.isS(0) << std::endl;
-    // bits.u(0);
-    // bits.print();
-    // std::cout << bits.isS(0) << std::endl;
-    // bits.s(3);
-    // std::cout << bits.read(2) << std::endl;
-    // bits.print();
-    // std::cout << bits.isS(3) << std::endl;
-
-    bitset bits(24);
-    for (int i = 0; i <= 24; i++) {
+    bitset bits(3);
+    for (int i = 0; i <= 3; i++) {
         bits.s(i);
         std::cout<<bits.isS(i)<<std::endl;
-        bits.u(i);
+        bits.p();
+        bits.z(i);
         std::cout<<bits.isS(i)<<std::endl;
+        bits.p();
         std::cout<<std::endl;
     }
-
+    bits.s(std::vector<ull>{0, 1, 3});
+    // 1101
+    // 1011 
+    // 1101
+    bits.s(99);
+    cout<<bits.get(95, 100)<<endl; // lsb is the leftmost bit, msb is the rightmost
+    
+    
+    System.visited.p();
+    
+    
     #endif
 
     #ifdef MAIN

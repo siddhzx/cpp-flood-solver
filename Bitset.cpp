@@ -2,13 +2,15 @@
 #include <string>
 #include <math.h>
 #include <deque>
+#include <vector>
 
 using namespace std;
 #define ll long long
 #define ull unsigned long long
 #define ull_size (sizeof(ull)*8) // ORDER OF OPERATIONS HERE IS REQUIRED WTF
+// in the future could have used templates
 class rtbs {
-private:
+protected:
     ull* bits;
     ull size;
     string ull_bin(ull n){
@@ -25,19 +27,19 @@ public:
     rtbs(ull n) {
         size = n;
         bits = new ull[size];
-        // @important - by default set all to 1 (~0 unsigned = 1^ set)
+        // @important - by default set all to 0 (but ~0 unsigned = 111...1 set)
         for(ull i = 0; i<size;++i)bits[i]= (0); 
     }
 
     ~rtbs() { delete[] bits; }
 
     void p() {
-        cout<<string(ull_size, '*')<<endl;
+        cout<<string(ull_size, '=')<<endl;
         for (ull i = 0; i < size; ++i){
             ull n = bits[i];
-            cout<<i<<"; "<<n<<"; "<<ull_bin(n)<<endl;
+            cout<<"idx: "<<i<<"; ull val: "<<n<<"; \nbinary: "<<ull_bin(n)<<endl;
         }
-        cout<<string(ull_size, '*')<<endl;
+        cout<<string(ull_size, '=')<<endl;
     }
 
     /*
@@ -46,8 +48,8 @@ public:
     */
     void s(ull pos) {
         ull idx = pos/ull_size;
-        ull set = (ull_size-1-pos);
-        cout<<"test: "<<ull_size<<";"<<idx<<";"<<set<<endl;
+        ull set = (ull_size-1-(pos%ull_size));
+        // cout<<"test: "<<ull_size<<";"<<idx<<";"<<set<<endl;
         bits[idx] |= (1ull<<set);
     }
 
@@ -56,19 +58,59 @@ public:
         ull set = (ull_size-1-pos);
         return bits[idx] & (1ull<<set);
     }
+
+    void z(ull pos) {
+        if (isS(pos)) {
+            ull idx = pos/ull_size;
+            ull set = (ull_size-1-pos);
+            bits[idx] ^= (1ull<<set);
+        }
+    }
+};
+class test {
+public:
+    test(ull n) {
+        cout<<"BASIJKDBASKJBDKJSABD: "<<n<<endl;
+    }
+};
+class bitset: public rtbs, test {
+public:
+    bitset(ull n):rtbs(n), test(n) {} // base class constructor initializer, wow! multiple inheritance is v cool
+    /*
+    bbaa_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000
+    */
+    int get(ull n) {
+        if (n < 0 || n > (size*ull_size)) throw invalid_argument("getting an index out of bounds.");
+        ull next = (n%2==0) ? n + 1 : n - 1;
+        switch (isS(n) + isS(next)) {
+            case 0:
+                return 0;
+            case 1:
+                return 1;
+            case 2:
+                return -1;
+            default:
+                cout<<"cooked"<<endl;
+                return -69420;
+        }
+    }
+    using rtbs::s; // using allows us to access base class s + bitset class s
+    void s(std::vector<ull> pts) {
+        for (auto i : pts) s(i);
+    }
 };
 
 int main() {
-    rtbs b(2);
+    /* rtbs = run-time bitset */
+    bitset b(4); // gets the -1, 0, 1 positioning
     b.p();
-    cout<<endl;
-    b.s(0);
-    cout<<"is set "<<b.isS(0)<<endl;
-    b.s(1);
-    b.s(5);
-    b.s(7);
-    b.s(9);
-    b.s(64);
-    b.s(63);
+    b.s({1ull, 2ull, 3ull});
     b.p();
+    b.s(128);
+    b.s(129);
+    cout<<"getting: "<<b.get(128)<<endl;
+    cout<<"getting: "<<b.get(1)<<endl;
+    cout<<"getting: "<<b.get(2)<<endl;
+    cout<<"getting: "<<b.get(3)<<endl;
+    cout<<"getting: "<<b.get(4)<<endl;
 }
